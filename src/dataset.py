@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 # import scanpy as sc
 
 from causalchamber.datasets import Dataset as ChamberData
-from skimage import io
+from skimage import io, transform
 
 
 # read the norman dataset.
@@ -99,8 +99,11 @@ class SimuDataset(Dataset):
 
 
 class ChamberDataset(Dataset):
-    def __init__(self, data_root='/Users/Simon/Documents/PhD/Projects/CausalRepresentationChambers/data/chamber_downloads'):
+    def __init__(self, data_root='/Users/Simon/Documents/PhD/Projects/CausalRepresentationChambers/data/chamber_downloads',
+                 transform=None):
         super(Dataset, self).__init__()
+
+        self.transform = transform
 
         self.data_root = data_root
         self.chamber_data_name = 'lt_camera_v1'
@@ -151,7 +154,15 @@ class ChamberDataset(Dataset):
         # One-hot intervention label
         c = self.iv_ids[item]
 
-        return obs_sample, iv_sample, c
+        if self.transform:
+            obs_sample = self.transform(obs_sample)
+            iv_sample = self.transform(iv_sample)
+
+        return torch.as_tensor(obs_sample.transpose((2, 0, 1)),
+                               dtype=torch.float32),  \
+            torch.as_tensor(iv_sample.transpose((2, 0, 1)),
+                            dtype=torch.float32), \
+            torch.as_tensor(c, dtype=torch.float32)
 
     def __len__(self):
         return len(self.obs_data)
@@ -171,4 +182,3 @@ def _map_iv_envs(idx):
     map = ['scm_1_red', 'scm_1_green', 'scm_1_blue', 'scm_1_pol_1', 'scm_1_pol_2']
 
     return map[idx]
-

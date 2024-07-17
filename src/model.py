@@ -8,7 +8,7 @@ from torch.autograd import Variable
 # "dim" specifies the sample dimension; "c_dim" specifies the dimension of the intervention encoding.
 #  "z_dim" specifies the dimension of the latent space.
 class CMVAE(nn.Module):
-    def __init__(self, dim, z_dim, c_dim, device=None):
+    def __init__(self, dim, z_dim, c_dim, image_data=False, device=None):
 
         super(CMVAE, self).__init__()
 
@@ -23,9 +23,43 @@ class CMVAE(nn.Module):
         self.c_dim = c_dim
         self.dim = dim
 
+        self.image_data = image_data
+
         # encoder
+        if self.image_data: # conv encoder/decoder adapted from Philipp Lippe
+            in_channels = self.dim[0]
+            h_dim = 64 # hardcoded for now
+
+            encoder_layers = [
+                nn.Sequential(
+                    nn.Conv2d(in_channels if i_layer == 0 else h_dim,
+                              h_dim,
+                              kernel_size=3,
+                              stride=2,
+                              padding=1,
+                              bias=False),
+                    nn.BatchNorm2d(h_dim),
+                    nn.SiLU(),
+                    nn.Conv2d(h_dim, h_dim, kernel_size=3, stride=1, padding=1, bias=False),
+                    nn.BatchNorm2d(h_dim),
+                    nn.SiLU()
+                ) for i_layer in range(4)
+            ]
+            self.conv_encoder = nn.Sequential(
+                *encoder_layers,
+                nn.Flatten(),
+                nn.Linear(4*4*h_dim, 4*h_dim), # hardcoded dims for now
+                nn.LayerNorm(4*h_dim),
+                nn.SiLU()
+            )
+            weights_init(self.conv_encoder)
+
+            x_dim = 4*h_dim
+        else:
+            x_dim = self.dim
+
         hids = 128
-        self.fc1 = nn.Linear(self.dim,hids)
+        self.fc1 = nn.Linear(x_dim, hids)
         weights_init(self.fc1)
         
         self.fc_mean = nn.Linear(hids, z_dim)
@@ -44,9 +78,38 @@ class CMVAE(nn.Module):
 
         # decoder
         self.d1 = nn.Linear(self.z_dim,hids)
-        self.d2 = nn.Linear(hids, self.dim)
+        self.d2 = nn.Linear(hids, x_dim)
         weights_init(self.d1)
         weights_init(self.d2)
+        if self.image_data:
+            self.linear = nn.Sequential(
+                nn.Linear(x_dim, 4*4*h_dim), # hardcoded dims
+                nn.LayerNorm(4*4*h_dim),
+                nn.SiLU()
+            )
+            weights_init(self.linear)
+            decoder_layers = [
+                nn.Sequential(
+                    nn.Upsample(scale_factor=2.0, mode='bilinear', align_corners=True),
+                    nn.BatchNorm2d(h_dim),
+                    nn.SiLU(),
+                    nn.Conv2d(h_dim, h_dim, kernel_size=3, stride=1, padding=1),
+                    nn.BatchNorm2d(h_dim),
+                    nn.SiLU(),
+                    nn.Conv2d(h_dim, h_dim, kernel_size=3, stride=1, padding=1)
+                ) for _ in range(4)
+            ]
+            self.conv_decoder = nn.Sequential(
+                *decoder_layers,
+                nn.BatchNorm2d(h_dim),
+                nn.SiLU(),
+                nn.Conv2d(h_dim, h_dim, 1),
+                nn.BatchNorm2d(h_dim),
+                nn.SiLU(),
+                nn.Conv2d(h_dim, in_channels, 1),
+                nn.Tanh()
+            )
+            weights_init(self.conv_decoder)
         
         # activation functions
         self.leakyrelu = nn.LeakyReLU(0.2)
@@ -55,21 +118,29 @@ class CMVAE(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def encode(self, x):
+        if self.image_data:
+            x = self.conv_encoder(x)
         h = self.leakyrelu(self.fc1(x))
         return self.fc_mean(h), F.softplus(self.fc_var(h)) 
 
     def reparametrize(self, mu, var):
         std = torch.sqrt(var)
         if self.cuda:
-            eps = torch.DoubleTensor(std.size()).normal_().to(self.device)
+            eps = torch.DoubleTensor(std.size()).normal_().to(torch.float32).to(self.device)
         else:
-            eps = torch.DoubleTensor(std.size()).normal_()
+            eps = torch.DoubleTensor(std.size()).normal_().to(torch.float32)
         eps = Variable(eps)
         return eps.mul(std).add_(mu) 
 
     def decode(self, u):        
         h = self.leakyrelu(self.d1(u))
-        return self.leakyrelu(self.d2(h))
+        if self.image_data:
+            h = self.leakyrelu(self.d2(h))
+            h = self.linear(h)
+            h = h.reshape(h.shape[0], -1, 4, 4) # hardcoded
+            return self.conv_decoder(h)
+        else:
+            return self.leakyrelu(self.d2(h))
     
     def c_encode(self, c, temp=1):
         h = self.leakyrelu(self.c1(c))
@@ -455,4 +526,3 @@ def truncated_normal_(tensor, mean=0, std=0.02):
     ind = valid.max(-1, keepdim=True)[1]
     tensor.data.copy_(tmp.gather(-1, ind).squeeze(-1))
     tensor.data.mul_(std).add_(mean)
-    

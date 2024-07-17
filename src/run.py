@@ -10,11 +10,13 @@ import numpy as np
 import random
 
 from train import train, train_CVAE, train_MVAE
-from utils import get_data
+from utils import get_simu_data, get_chamber_data, get_device
 
 
 def main(args):
-	print(f'using device: {args.device}')
+	# print(f'using device: {args.device}')
+	device = get_device()
+	print(f'using device: {device}')
 
 	opts = Namespace(
 		batch_size = 32,
@@ -37,7 +39,9 @@ def main(args):
 	np.random.seed(opts.seed)
 	random.seed(opts.seed)
 
-	dataloader, dataloader2, dim, cdim, ptb_targets = get_data(batch_size=opts.batch_size, mode=opts.mode)
+	# dataloader, dataloader2, dim, cdim, ptb_targets = get_data(batch_size=opts.batch_size, mode=opts.mode)
+	# dataloader, dataloader2, dim, cdim, ptb_targets = get_simu_data(batch_size=opts.batch_size, mode=opts.mode)
+	dataloader, dataloader2, dim, cdim, ptb_targets = get_chamber_data(batch_size=opts.batch_size, mode=opts.mode)
 
 	opts.dim = dim
 	if opts.latdim is None:
@@ -57,17 +61,17 @@ def main(args):
 		pickle.dump(dataloader, f, protocol=pickle.HIGHEST_PROTOCOL)
 
 	if args.model == 'cmvae':
-		train(dataloader, opts, args.device, args.savedir, log=True)
+		train(dataloader, opts, device, args.savedir, image_data=True, log=False) # TODO: turn on logging later, pass arg for image_data
 	elif args.model == 'cvae':
-		train_CVAE(dataloader, opts, args.device, args.savedir, log=True)
+		train_CVAE(dataloader, opts, device, args.savedir, log=True)
 	elif args.model == 'mvae':
-		train_MVAE(dataloader, opts, args.device, args.savedir, log=True) 
+		train_MVAE(dataloader, opts, device, args.savedir, log=True)
 
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(description='parse args')
 	parser.add_argument('-s', '--savedir', type=str, default='../result/', help='directory to save the results')
-	parser.add_argument('--device', type=str, default=None, help='device to run the training')
+	# parser.add_argument('--device', type=str, default=None, help='device to run the training')
 	parser.add_argument('--model', type=str, default='cmvae', help='model to run the training')
 	args = parser.parse_args()
 	

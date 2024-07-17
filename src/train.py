@@ -17,6 +17,7 @@ def train(
     device,
     savedir,
     log,
+    image_data=False,
     simu=False,
     order=None,
     nonlinear=False,
@@ -39,9 +40,12 @@ def train(
             dim = opts.dim,
             z_dim = opts.latdim,
             c_dim = opts.cdim,
+            image_data = image_data,
             device = device
         )
     cmvae.double()
+    if device.type == 'mps':
+        cmvae = cmvae.to(torch.float32)
     cmvae.to(device)
 
     optimizer = torch.optim.Adam(params=cmvae.parameters(), lr=opts.lr)
@@ -352,6 +356,3 @@ def loss_function(y_hat, y, x_recon, x, mu, var, G, MMD_sigma, kernel_num, match
     else:
         L1 = torch.norm(torch.triu(G,diagonal=1),1)  # L1 norm for sparse G
     return MMD, MSE, KLD, L1
-
-
-
