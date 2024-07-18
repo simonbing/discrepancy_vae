@@ -27,6 +27,7 @@ class CMVAE(nn.Module):
 
         # encoder
         if self.image_data: # conv encoder/decoder adapted from Philipp Lippe
+            NormLayer =  lambda d: nn.GroupNorm(num_groups=8, num_channels=d)
             in_channels = self.dim[0]
             h_dim = 64 # hardcoded for now
 
@@ -38,10 +39,10 @@ class CMVAE(nn.Module):
                               stride=2,
                               padding=1,
                               bias=False),
-                    nn.BatchNorm2d(h_dim),
+                    NormLayer(h_dim),
                     nn.SiLU(),
                     nn.Conv2d(h_dim, h_dim, kernel_size=3, stride=1, padding=1, bias=False),
-                    nn.BatchNorm2d(h_dim),
+                    NormLayer(h_dim),
                     nn.SiLU()
                 ) for i_layer in range(4)
             ]
@@ -91,20 +92,20 @@ class CMVAE(nn.Module):
             decoder_layers = [
                 nn.Sequential(
                     nn.Upsample(scale_factor=2.0, mode='bilinear', align_corners=True),
-                    nn.BatchNorm2d(h_dim),
+                    NormLayer(h_dim),
                     nn.SiLU(),
                     nn.Conv2d(h_dim, h_dim, kernel_size=3, stride=1, padding=1),
-                    nn.BatchNorm2d(h_dim),
+                    NormLayer(h_dim),
                     nn.SiLU(),
                     nn.Conv2d(h_dim, h_dim, kernel_size=3, stride=1, padding=1)
                 ) for _ in range(4)
             ]
             self.conv_decoder = nn.Sequential(
                 *decoder_layers,
-                nn.BatchNorm2d(h_dim),
+                NormLayer(h_dim),
                 nn.SiLU(),
                 nn.Conv2d(h_dim, h_dim, 1),
-                nn.BatchNorm2d(h_dim),
+                NormLayer(h_dim),
                 nn.SiLU(),
                 nn.Conv2d(h_dim, in_channels, 1),
                 nn.Tanh()

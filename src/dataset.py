@@ -99,23 +99,25 @@ class SimuDataset(Dataset):
 
 
 class ChamberDataset(Dataset):
-    def __init__(self, data_root='/Users/Simon/Documents/PhD/Projects/CausalRepresentationChambers/data/chamber_downloads',
+    def __init__(self, dataset, experiment,
+                 data_root='/Users/Simon/Documents/PhD/Projects/CausalRepresentationChambers/data/chamber_downloads',
                  transform=None):
         super(Dataset, self).__init__()
 
         self.transform = transform
 
         self.data_root = data_root
-        self.chamber_data_name = 'lt_camera_v1'
+        self.chamber_data_name = dataset
+        self.exp = experiment
         chamber_data = ChamberData(self.chamber_data_name, root=self.data_root, download=True)
         # Observational data
-        obs_data = chamber_data.get_experiment(name='scm_1_reference').as_pandas_dataframe()
+        obs_data = chamber_data.get_experiment(name=f'{self.exp}_reference').as_pandas_dataframe()
         # Interventional data
-        iv_data_1 = chamber_data.get_experiment(name='scm_1_red').as_pandas_dataframe()
-        iv_data_2 = chamber_data.get_experiment(name='scm_1_green').as_pandas_dataframe()
-        iv_data_3 = chamber_data.get_experiment(name='scm_1_blue').as_pandas_dataframe()
-        iv_data_4 = chamber_data.get_experiment(name='scm_1_pol_1').as_pandas_dataframe()
-        iv_data_5 = chamber_data.get_experiment(name='scm_1_pol_2').as_pandas_dataframe()
+        iv_data_1 = chamber_data.get_experiment(name=f'{self.exp}_red').as_pandas_dataframe()
+        iv_data_2 = chamber_data.get_experiment(name=f'{self.exp}_green').as_pandas_dataframe()
+        iv_data_3 = chamber_data.get_experiment(name=f'{self.exp}_blue').as_pandas_dataframe()
+        iv_data_4 = chamber_data.get_experiment(name=f'{self.exp}_pol_1').as_pandas_dataframe()
+        iv_data_5 = chamber_data.get_experiment(name=f'{self.exp}_pol_2').as_pandas_dataframe()
         iv_data_list = [iv_data_1, iv_data_2, iv_data_3, iv_data_4, iv_data_5]
         # Get one big df for all iv data
         self.iv_data = pd.concat(iv_data_list)
@@ -141,13 +143,13 @@ class ChamberDataset(Dataset):
 
         # Observational sample
         obs_img_name = os.path.join(self.data_root, self.chamber_data_name,
-                                    'scm_1_reference',
+                                    f'{self.exp}_reference',
                                     'images_100',
                                     self.obs_data['image_file'].iloc[item])
         obs_sample = io.imread(obs_img_name)
         # Interventional sample
         iv_img_name = os.path.join(self.data_root, self.chamber_data_name,
-                                   _map_iv_envs(self.iv_names[item]),
+                                   _map_iv_envs(self.iv_names[item], self.exp),
                                    'images_100',
                                    self.iv_data['image_file'].iloc[item])
         iv_sample = io.imread(iv_img_name)
@@ -177,8 +179,8 @@ def map_ptb_features(all_ptb_targets, ptb_ids):
     return np.vstack(ptb_features)
 
 
-def _map_iv_envs(idx):
+def _map_iv_envs(idx, exp):
     idx = int(idx)
-    map = ['scm_1_red', 'scm_1_green', 'scm_1_blue', 'scm_1_pol_1', 'scm_1_pol_2']
+    map = [f'{exp}_red', f'{exp}_green', f'{exp}_blue', f'{exp}_pol_1', f'{exp}_pol_2']
 
     return map[idx]

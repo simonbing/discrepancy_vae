@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, Subset
 from torch.utils.data.sampler import Sampler
 from skimage import transform
 
-from dataset import SimuDataset, ChamberDataset
+from crc.baselines.discrepancy_vae.src.dataset import SimuDataset, ChamberDataset
 
 
 ## MMD LOSS
@@ -145,22 +145,22 @@ def get_simu_data(batch_size=32, mode='train', perturb_targets=None):
         return dataloader, dim, cdim, ptb_genes, dataset.nonlinear
 
 
-def get_chamber_data(batch_size=32, mode='train'):
+def get_chamber_data(chamber_data, experiment, batch_size=32, mode='train'):
     assert mode in ['train', 'test'], 'mode not supported!'
 
     if mode == 'train':
         # Define custom torch dataset for chambers data
-        dataset = ChamberDataset(transform=Rescale(64))
+        dataset = ChamberDataset(dataset=chamber_data, experiment=experiment,
+                                 transform=Rescale(64))
         # Split train test
         train_idx, test_idx = split_chamberdata(dataset, batch_size=batch_size)
-        # TODO take care of the rest of splitting as above
         dataset_train = Subset(dataset, train_idx)
         iv_name_train = dataset.iv_names[train_idx]
         dataloader_train = DataLoader(dataset_train,
                                       batch_sampler=SCDATA_sampler(dataset_train,
                                                                    batch_size,
                                                                    iv_name_train),
-                                      num_workers=0)
+                                      num_workers=10)
 
         dataset_test = Subset(dataset, test_idx)
         iv_name_test = dataset.iv_names[test_idx]
@@ -170,7 +170,7 @@ def get_chamber_data(batch_size=32, mode='train'):
                                                                   iv_name_test),
                                      num_workers=0)
 
-        dim = dataset[0][0].shape # TODO: see where this is used in training
+        dim = dataset[0][0].shape
         cdim = dataset[0][2].shape[0]
 
         return dataloader_train, dataloader_test, dim, cdim, dataset.iv_targets
@@ -303,10 +303,10 @@ class Rescale(object):
         return img
 
 
-def get_device():
-    if torch.cuda.is_available():
-        return torch.device("cuda:0")
-    elif torch.backends.mps.is_available():
-        return torch.device("mps")
-    else:
-        return torch.device("cpu")
+# def get_device():
+#     if torch.cuda.is_available():
+#         return torch.device("cuda:0")
+#     elif torch.backends.mps.is_available():
+#         return torch.device("mps")
+#     else:
+#         return torch.device("cpu")

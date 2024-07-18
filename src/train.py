@@ -6,8 +6,8 @@ from copy import deepcopy
 import numpy as np
 import os
 
-from model import CMVAE, CVAE, MVAE, CMVAE_simu
-from utils import MMD_loss
+from crc.baselines.discrepancy_vae.src.model import CMVAE, CVAE, MVAE, CMVAE_simu
+from crc.baselines.discrepancy_vae.src.utils import MMD_loss
 
 
 # fit CMVAE to data
@@ -23,8 +23,8 @@ def train(
     nonlinear=False,
     ):
 
-    if log:
-        wandb.init(project='cmvae', name=savedir.split('/')[-1])  
+    # if log:
+    #     wandb.init(project='cmvae', name=savedir.split('/')[-1])
 
     if simu:
         cmvae = CMVAE_simu(
@@ -56,11 +56,14 @@ def train(
     ## Loss parameters
     beta_schedule = torch.zeros(opts.epochs) # weight on the KLD
     beta_schedule[:10] = 0
-    beta_schedule[10:] = torch.linspace(0,opts.mxBeta,opts.epochs-10) 
+    beta_schedule[10:] = torch.linspace(0,opts.mxBeta,opts.epochs-10)
+    beta_schedule[10:] = torch.linspace(0, opts.mxBeta, 100 - 10)
     alpha_schedule = torch.zeros(opts.epochs) # weight on the MMD
     alpha_schedule[:] = opts.mxAlpha
     alpha_schedule[:5] = 0
-    alpha_schedule[5:int(opts.epochs/2)] = torch.linspace(0,opts.mxAlpha,int(opts.epochs/2)-5) 
+    alpha_schedule[5:int(opts.epochs/2)] = torch.linspace(0,opts.mxAlpha,int(opts.epochs/2)-5)
+    alpha_schedule[5:int(opts.epochs / 2)] = torch.linspace(0, opts.mxAlpha,
+                                                            int(100 / 2) - 5)
     alpha_schedule[int(opts.epochs/2):] = opts.mxAlpha
 
     ## Softmax temperature 

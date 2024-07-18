@@ -19,10 +19,10 @@ def main(args):
 	print(f'using device: {device}')
 
 	opts = Namespace(
-		batch_size = 32,
+		batch_size = 64,
 		mode = 'train',
 		lr = 1e-3,
-		epochs = 100,
+		epochs = 5,
 		grad_clip = False,
 		mxAlpha = 10,
 		mxBeta = 2,
@@ -31,7 +31,7 @@ def main(args):
 		MMD_sigma = 1000,
 		kernel_num = 10,
 		matched_IO = False,
-		latdim = 105,
+		latdim = 5,
 		seed = 12
 	)
 
