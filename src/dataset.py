@@ -101,8 +101,10 @@ class SimuDataset(Dataset):
 class ChamberDataset(Dataset):
     def __init__(self, dataset, experiment,
                  data_root='/Users/Simon/Documents/PhD/Projects/CausalRepresentationChambers/data/chamber_downloads',
-                 transform=None):
+                 transform=None,
+                 eval=False):
         super(Dataset, self).__init__()
+        self.eval = eval
 
         self.transform = transform
 
@@ -160,11 +162,21 @@ class ChamberDataset(Dataset):
             obs_sample = self.transform(obs_sample)
             iv_sample = self.transform(iv_sample)
 
-        return torch.as_tensor(obs_sample.transpose((2, 0, 1)),
-                               dtype=torch.float32),  \
-            torch.as_tensor(iv_sample.transpose((2, 0, 1)),
-                            dtype=torch.float32), \
-            torch.as_tensor(c, dtype=torch.float32)
+        if not self.eval:
+            return torch.as_tensor(obs_sample.transpose((2, 0, 1)),
+                                   dtype=torch.float32),  \
+                torch.as_tensor(iv_sample.transpose((2, 0, 1)),
+                                dtype=torch.float32), \
+                torch.as_tensor(c, dtype=torch.float32)
+        else:  # also return the ground truth variables
+            Z_obs = self.obs_data[['red', 'green', 'blue', 'pol_1', 'pol_2']].iloc[item].to_numpy()
+            Z_iv = self.iv_data[['red', 'green', 'blue', 'pol_1', 'pol_2']].iloc[item].to_numpy()
+            return torch.as_tensor(obs_sample.transpose((2, 0, 1)),
+                                   dtype=torch.float32),  \
+                torch.as_tensor(iv_sample.transpose((2, 0, 1)),
+                                dtype=torch.float32), \
+                torch.as_tensor(c, dtype=torch.float32), \
+                Z_obs, Z_iv
 
     def __len__(self):
         return len(self.obs_data)

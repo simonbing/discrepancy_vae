@@ -27,7 +27,7 @@ class CMVAE(nn.Module):
 
         # encoder
         if self.image_data: # conv encoder/decoder adapted from Philipp Lippe
-            NormLayer =  lambda d: nn.GroupNorm(num_groups=8, num_channels=d)
+            NormLayer = lambda d: nn.GroupNorm(num_groups=8, num_channels=d)
             in_channels = self.dim[0]
             h_dim = 64 # hardcoded for now
 
@@ -122,7 +122,10 @@ class CMVAE(nn.Module):
         if self.image_data:
             x = self.conv_encoder(x)
         h = self.leakyrelu(self.fc1(x))
-        return self.fc_mean(h), F.softplus(self.fc_var(h)) 
+        # Add small epsilon for numerical stability (otherwise softplus might
+        # return 0, leading to log(softplus) = -inf.)
+        eps = 1e-8
+        return self.fc_mean(h), F.softplus(self.fc_var(h))+eps
 
     def reparametrize(self, mu, var):
         std = torch.sqrt(var)
