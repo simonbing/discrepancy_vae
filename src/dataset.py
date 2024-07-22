@@ -136,7 +136,7 @@ class ChamberDataset(Dataset):
                                                       replace=True), :]
 
         # Get one-hot encoding of iv environments
-        self.iv_targets = ['0','1','2','3','4'] # hardcoded for now, need this name
+        self.iv_targets = ['0', '1', '2', '3', '4'] # hardcoded for now, need this name
         self.iv_ids = map_ptb_features(self.iv_targets, self.iv_names)
 
     def __getitem__(self, item):

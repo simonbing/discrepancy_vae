@@ -100,5 +100,34 @@ class EvalCMVAE(EvalModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get_encodings(self):
-        return None
+    def get_encodings(self, dataset_test, batch_size=500):
+        # Make dataloader for test data
+        dataloader_test = DataLoader(dataset_test,
+                                     batch_sampler=SCDATA_sampler(
+                                         dataset_test,
+                                         batch_size,
+                                         dataset_test.dataset.iv_names[dataset_test.indices]),
+                                     num_workers=0,
+                                     shuffle=False)
+
+        self.trained_model.eval()
+
+        z_list = []
+        z_hat_list = []
+        # Iterate over test dataloader and encode all samples and save gt data
+        for X in dataloader_test:
+            x = X[0]
+            z = X[3]
+
+            x = x.to(self.device)
+
+            mu, var = self.trained_model.encode(x)
+            z_hat = self.trained_model.reparametrize(mu, var)
+
+            z_list.append(z)
+            z_hat_list.append(z_hat)
+
+        z = torch.cat(z_list).cpu().detach().numpy()
+        z_hat = torch.cat(z_hat_list).cpu().detach().numpy()
+
+        return z, z_hat

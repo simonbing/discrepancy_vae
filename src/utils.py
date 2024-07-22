@@ -302,12 +302,3 @@ class Rescale(object):
         img = transform.resize(image, (new_h, new_w))
 
         return img
-
-
-# def get_device():
-#     if torch.cuda.is_available():
-#         return torch.device("cuda:0")
-#     elif torch.backends.mps.is_available():
-#         return torch.device("mps")
-#     else:
-#         return torch.device("cpu")
