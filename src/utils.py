@@ -151,9 +151,10 @@ def get_chamber_data(chamber_data, experiment, batch_size=32, mode='train'):
     if mode == 'train':
         # Define custom torch dataset for chambers data
         dataset = ChamberDataset(dataset=chamber_data, experiment=experiment,
-                                 transform=Rescale(64))
+                                 transform=Rescale(64), eval=True)
+        # TODO: can we define two sets where one has eval True and one False? This way we dont have to pass Z values in training
         # Split train test
-        train_idx, test_idx = split_chamberdata(dataset, batch_size=batch_size)
+        train_idx, test_idx = split_chamberdata(dataset)
         dataset_train = Subset(dataset, train_idx)
         iv_name_train = dataset.iv_names[train_idx]
         dataloader_train = DataLoader(dataset_train,
@@ -173,7 +174,7 @@ def get_chamber_data(chamber_data, experiment, batch_size=32, mode='train'):
         dim = dataset[0][0].shape
         cdim = dataset[0][2].shape[0]
 
-        return dataloader_train, dataloader_test, dim, cdim, dataset.iv_targets
+        return dataset_train, dataset_test, dim, cdim, dataset.iv_targets, iv_name_train, iv_name_test
 
 
 def split_simudata(simudataset, batch_size=32):
@@ -193,7 +194,7 @@ def split_simudata(simudataset, batch_size=32):
     return train_idx, test_idx
 
 
-def split_chamberdata(dataset, batch_size=32):
+def split_chamberdata(dataset):
     num_sample = 4000 # seems to be train_samples PER environment
 
     # test_idx = []

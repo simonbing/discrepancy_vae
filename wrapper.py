@@ -6,11 +6,12 @@ import json
 import pickle
 
 import torch
+from torch.utils.data import DataLoader
 import numpy as np
 import random
 
 from crc.baselines.discrepancy_vae.src.train import train
-from crc.baselines.discrepancy_vae.src.utils import get_chamber_data
+from crc.baselines.discrepancy_vae.src.utils import get_chamber_data, SCDATA_sampler
 
 from crc.wrappers import TrainModel, EvalModel
 from crc.utils import get_device
@@ -25,6 +26,9 @@ class TrainCMVAE(TrainModel):
         Adapted from source code for "Identifiability Guarantees for Causal Disentanglement
         from Soft Interventions".
         """
+        # Need this to prevent overflow during training
+        torch.multiprocessing.set_sharing_strategy('file_system')
+
         device = get_device()
         print(f'using device: {device}')
 
@@ -49,9 +53,26 @@ class TrainCMVAE(TrainModel):
         np.random.seed(opts.seed)
         random.seed(opts.seed)
 
-        dataloader_train, dataloader_test, dim, cdim, ptb_targets = get_chamber_data(
-            chamber_data=self.dataset, experiment=self.experiment,
-            batch_size=opts.batch_size, mode=opts.mode)
+        dataset_train, dataset_test, dim, cdim, ptb_targets, \
+            iv_name_train, iv_name_test = get_chamber_data(chamber_data=self.dataset,
+                                                           experiment=self.experiment,
+                                                           batch_size=opts.batch_size,
+                                                           mode=opts.mode)
+
+        dataloader_train = DataLoader(dataset_train,
+                                      batch_sampler=SCDATA_sampler(
+                                          dataset_train,
+                                          opts.batch_size,
+                                          iv_name_train),
+                                      num_workers=10)
+        # TODO: move this to eval code
+        dataloader_test = DataLoader(dataset_test,
+                                     batch_sampler=SCDATA_sampler(
+                                         dataset_test,
+                                         opts.batch_size,
+                                         iv_name_test),
+                                     num_workers=0
+                                     )
 
         opts.dim = dim
         if opts.latdim is None:
@@ -59,18 +80,25 @@ class TrainCMVAE(TrainModel):
         opts.cdim = cdim
 
         # Save training metadata
-        train_data_path = os.path.join(self.model_dir, 'train_data.pkl')
+        train_data_path = os.path.join(self.model_dir, 'train_dataset.pkl')
         if not os.path.exists(train_data_path):
             with open(train_data_path, 'wb') as f:
-                pickle.dump(dataloader_train, f, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(dataset_train, f, protocol=pickle.HIGHEST_PROTOCOL)
 
-        test_data_path = os.path.join(self.model_dir, 'test_data.pkl')
+        test_data_path = os.path.join(self.model_dir, 'test_dataset.pkl')
         if not os.path.exists(test_data_path):
             with open(test_data_path, 'wb') as f:
-                pickle.dump(dataloader_test, f, protocol=pickle.HIGHEST_PROTOCOL)
+                pickle.dump(dataset_test, f, protocol=pickle.HIGHEST_PROTOCOL)
 
         with open(os.path.join(self.train_dir, 'config.json'), 'w') as f:
             json.dump(opts.__dict__, f, indent=4)
 
-
         train(dataloader_train, opts, device, self.train_dir, image_data=True, log=True)
+
+
+class EvalCMVAE(EvalModel):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def get_encodings(self):
+        return None
