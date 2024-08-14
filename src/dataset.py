@@ -139,6 +139,19 @@ class ChamberDataset(Dataset):
         self.iv_targets = ['0', '1', '2', '3', '4'] # hardcoded for now, need this name
         self.iv_ids = map_ptb_features(self.iv_targets, self.iv_names)
 
+        # Get ground truth adjacency matrix
+        if self.exp == 'scm_1':
+            # TODO: probably need to follow some convention of making this upper triang
+            self.G = np.array(
+                [
+                    [0, 1, 0, 1, 0],
+                    [0, 0, 1, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 0, 0, 0, 0],
+                    [0, 1, 1, 0, 0],
+                ]
+            )
+
     def __getitem__(self, item):
         if torch.is_tensor(item):
             item = item.tolist()

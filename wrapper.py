@@ -64,7 +64,7 @@ class TrainCMVAE(TrainModel):
                                           dataset_train,
                                           opts.batch_size,
                                           iv_name_train),
-                                      num_workers=10)
+                                      num_workers=0)
         # TODO: move this to eval code
         dataloader_test = DataLoader(dataset_test,
                                      batch_sampler=SCDATA_sampler(
@@ -99,6 +99,12 @@ class TrainCMVAE(TrainModel):
 class EvalCMVAE(EvalModel):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+
+    def get_adjacency_matrices(self, dataset_test):
+        G = dataset_test.dataset.G
+        G_hat = self.trained_model.G.cpu().detach().numpy()
+
+        return G, G_hat
 
     def get_encodings(self, dataset_test, batch_size=500):
         # Make dataloader for test data
