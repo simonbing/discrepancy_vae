@@ -26,6 +26,11 @@ class TrainCMVAE(TrainModel):
         Adapted from source code for "Identifiability Guarantees for Causal Disentanglement
         from Soft Interventions".
         """
+        # Check if trained model already exists, skip training if so
+        if os.path.exists(os.path.join(self.train_dir, 'best_model.pt')):
+            print('Trained model found, skipping training!')
+            return
+
         # Need this to prevent overflow during training
         torch.multiprocessing.set_sharing_strategy('file_system')
 
