@@ -60,7 +60,7 @@ class TrainCMVAE(TrainModel):
 
         dataset_train, dataset_test, dim, cdim, ptb_targets, \
             iv_name_train, iv_name_test = get_chamber_data(chamber_data=self.dataset,
-                                                           experiment=self.experiment,
+                                                           task=self.task,
                                                            batch_size=opts.batch_size,
                                                            mode=opts.mode)
 

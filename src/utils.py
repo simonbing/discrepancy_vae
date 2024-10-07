@@ -145,12 +145,12 @@ def get_simu_data(batch_size=32, mode='train', perturb_targets=None):
         return dataloader, dim, cdim, ptb_genes, dataset.nonlinear
 
 
-def get_chamber_data(chamber_data, experiment, batch_size=32, mode='train'):
+def get_chamber_data(chamber_data, task, batch_size=32, mode='train'):
     assert mode in ['train', 'test'], 'mode not supported!'
 
     if mode == 'train':
         # Define custom torch dataset for chambers data
-        dataset = ChamberDataset(dataset=chamber_data, experiment=experiment,
+        dataset = ChamberDataset(dataset=chamber_data, task=task,
                                  transform=Rescale(64), eval=True)
         # TODO: can we define two sets where one has eval True and one False? This way we dont have to pass Z values in training
         # Split train test

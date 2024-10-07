@@ -9,6 +9,8 @@ from torch.utils.data import Dataset
 from causalchamber.datasets import Dataset as ChamberData
 from skimage import io, transform
 
+from crc.utils import get_task_environments
+
 
 # read the norman dataset.
 # map the target genes of each cell to a binary vector, using a target gene list "perturb_targets".
@@ -99,7 +101,7 @@ class SimuDataset(Dataset):
 
 
 class ChamberDataset(Dataset):
-    def __init__(self, dataset, experiment,
+    def __init__(self, dataset, task,
                  data_root='/Users/Simon/Documents/PhD/Projects/CausalRepresentationChambers/data/chamber_downloads',
                  transform=None,
                  eval=False):
@@ -110,17 +112,18 @@ class ChamberDataset(Dataset):
 
         self.data_root = data_root
         self.chamber_data_name = dataset
-        self.exp = experiment
+        self.exp, self.env_list = get_task_environments(task)
         chamber_data = ChamberData(self.chamber_data_name, root=self.data_root, download=True)
         # Observational data
         obs_data = chamber_data.get_experiment(name=f'{self.exp}_reference').as_pandas_dataframe()
         # Interventional data
-        iv_data_1 = chamber_data.get_experiment(name=f'{self.exp}_red').as_pandas_dataframe()
-        iv_data_2 = chamber_data.get_experiment(name=f'{self.exp}_green').as_pandas_dataframe()
-        iv_data_3 = chamber_data.get_experiment(name=f'{self.exp}_blue').as_pandas_dataframe()
-        iv_data_4 = chamber_data.get_experiment(name=f'{self.exp}_pol_1').as_pandas_dataframe()
-        iv_data_5 = chamber_data.get_experiment(name=f'{self.exp}_pol_2').as_pandas_dataframe()
-        iv_data_list = [iv_data_1, iv_data_2, iv_data_3, iv_data_4, iv_data_5]
+        iv_data_list = [chamber_data.get_experiment(name=f'{self.exp}_{env}').as_pandas_dataframe() for env in self.env_list]
+        # iv_data_1 = chamber_data.get_experiment(name=f'{self.exp}_red').as_pandas_dataframe()
+        # iv_data_2 = chamber_data.get_experiment(name=f'{self.exp}_green').as_pandas_dataframe()
+        # iv_data_3 = chamber_data.get_experiment(name=f'{self.exp}_blue').as_pandas_dataframe()
+        # iv_data_4 = chamber_data.get_experiment(name=f'{self.exp}_pol_1').as_pandas_dataframe()
+        # iv_data_5 = chamber_data.get_experiment(name=f'{self.exp}_pol_2').as_pandas_dataframe()
+        # iv_data_list = [iv_data_1, iv_data_2, iv_data_3, iv_data_4, iv_data_5]
         # Get one big df for all iv data
         self.iv_data = pd.concat(iv_data_list)
 
@@ -136,11 +139,11 @@ class ChamberDataset(Dataset):
                                                       replace=True), :]
 
         # Get one-hot encoding of iv environments
-        self.iv_targets = ['0', '1', '2', '3', '4'] # hardcoded for now, need this name
+        self.iv_targets = [str(elem) for elem in np.arange(len(self.env_list))] # hardcoded for now, need this name
         self.iv_ids = map_ptb_features(self.iv_targets, self.iv_names)
 
         # Get ground truth adjacency matrix
-        if self.exp == 'scm_1':
+        if self.exp in ['scm_1', 'scm_2']:
             # TODO: probably need to follow some convention of making this upper triang
             self.G = np.array(
                 [
@@ -159,13 +162,13 @@ class ChamberDataset(Dataset):
         # Observational sample
         obs_img_name = os.path.join(self.data_root, self.chamber_data_name,
                                     f'{self.exp}_reference',
-                                    'images_100',
+                                    'images_64',
                                     self.obs_data['image_file'].iloc[item])
         obs_sample = io.imread(obs_img_name)
         # Interventional sample
         iv_img_name = os.path.join(self.data_root, self.chamber_data_name,
-                                   _map_iv_envs(self.iv_names[item], self.exp),
-                                   'images_100',
+                                   _map_iv_envs(self.iv_names[item], self.exp, self.env_list),
+                                   'images_64',
                                    self.iv_data['image_file'].iloc[item])
         iv_sample = io.imread(iv_img_name)
         # One-hot intervention label
@@ -204,8 +207,9 @@ def map_ptb_features(all_ptb_targets, ptb_ids):
     return np.vstack(ptb_features)
 
 
-def _map_iv_envs(idx, exp):
+def _map_iv_envs(idx, exp, env_list):
     idx = int(idx)
-    map = [f'{exp}_red', f'{exp}_green', f'{exp}_blue', f'{exp}_pol_1', f'{exp}_pol_2']
+    map = [f'{exp}_{env}' for env in env_list]
+    # map = [f'{exp}_red', f'{exp}_green', f'{exp}_blue', f'{exp}_pol_1', f'{exp}_pol_2']
 
     return map[idx]
