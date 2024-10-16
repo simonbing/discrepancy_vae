@@ -186,6 +186,12 @@ class CMVAE(nn.Module):
         
         return y_hat, x_recon, mu, var, self.G
 
+    def get_z(self, x):
+        mu, var = self.encode(x)
+        z = self.reparametrize(mu, var)
+
+        return z
+
 
 # Baseline models
 # conditional VAE with causal layer but no mmd loss

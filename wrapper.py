@@ -98,7 +98,9 @@ class TrainCMVAE(TrainModel):
         with open(os.path.join(self.train_dir, 'config.json'), 'w') as f:
             json.dump(opts.__dict__, f, indent=4)
 
-        train(dataloader_train, opts, device, self.train_dir, image_data=True, log=True)
+        best_model_path = os.path.join(self.train_dir, 'best_model.pt')
+        if not os.path.exists(best_model_path):
+            train(dataloader_train, opts, device, self.train_dir, image_data=True, log=True)
 
 
 class EvalCMVAE(EvalModel):

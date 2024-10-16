@@ -171,6 +171,11 @@ class ChamberDataset(Dataset):
                                    'images_64',
                                    self.iv_data['image_file'].iloc[item])
         iv_sample = io.imread(iv_img_name)
+
+        # Normalize inputs
+        obs_sample = obs_sample / 255.0
+        iv_sample = iv_sample / 255.0
+
         # One-hot intervention label
         c = self.iv_ids[item]
 
