@@ -141,11 +141,11 @@ class ChamberDataset(Dataset):
             # TODO: probably need to follow some convention of making this upper triang
             self.G = np.array(
                 [
-                    [0, 1, 0, 1, 0],
-                    [0, 0, 1, 0, 0],
                     [0, 0, 0, 0, 0],
+                    [1, 0, 0, 0, 1],
+                    [0, 1, 0, 0, 1],
+                    [1, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0],
-                    [0, 1, 1, 0, 0],
                 ]
             )
 
