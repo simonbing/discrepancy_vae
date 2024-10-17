@@ -112,19 +112,13 @@ class ChamberDataset(Dataset):
 
         self.data_root = data_root
         self.chamber_data_name = dataset
-        self.exp, self.env_list = get_task_environments(task)
+        self.exp, self.env_list, self.features = get_task_environments(task)
         chamber_data = ChamberData(self.chamber_data_name, root=self.data_root, download=True)
         # Observational data
         obs_data = chamber_data.get_experiment(name=f'{self.exp}_reference').as_pandas_dataframe()
         # Interventional data
         iv_data_list = [chamber_data.get_experiment(name=f'{self.exp}_{env}').as_pandas_dataframe() for env in self.env_list]
-        # iv_data_1 = chamber_data.get_experiment(name=f'{self.exp}_red').as_pandas_dataframe()
-        # iv_data_2 = chamber_data.get_experiment(name=f'{self.exp}_green').as_pandas_dataframe()
-        # iv_data_3 = chamber_data.get_experiment(name=f'{self.exp}_blue').as_pandas_dataframe()
-        # iv_data_4 = chamber_data.get_experiment(name=f'{self.exp}_pol_1').as_pandas_dataframe()
-        # iv_data_5 = chamber_data.get_experiment(name=f'{self.exp}_pol_2').as_pandas_dataframe()
-        # iv_data_list = [iv_data_1, iv_data_2, iv_data_3, iv_data_4, iv_data_5]
-        # Get one big df for all iv data
+
         self.iv_data = pd.concat(iv_data_list)
 
         # Generate intervention index list
@@ -190,8 +184,8 @@ class ChamberDataset(Dataset):
                                 dtype=torch.float32), \
                 torch.as_tensor(c, dtype=torch.float32)
         else:  # also return the ground truth variables
-            Z_obs = self.obs_data[['red', 'green', 'blue', 'pol_1', 'pol_2']].iloc[item].to_numpy()
-            Z_iv = self.iv_data[['red', 'green', 'blue', 'pol_1', 'pol_2']].iloc[item].to_numpy()
+            Z_obs = self.obs_data[self.features].iloc[item].to_numpy()
+            Z_iv = self.iv_data[self.features].iloc[item].to_numpy()
             return torch.as_tensor(obs_sample.transpose((2, 0, 1)),
                                    dtype=torch.float32),  \
                 torch.as_tensor(iv_sample.transpose((2, 0, 1)),
@@ -215,6 +209,5 @@ def map_ptb_features(all_ptb_targets, ptb_ids):
 def _map_iv_envs(idx, exp, env_list):
     idx = int(idx)
     map = [f'{exp}_{env}' for env in env_list]
-    # map = [f'{exp}_red', f'{exp}_green', f'{exp}_blue', f'{exp}_pol_1', f'{exp}_pol_2']
 
     return map[idx]
